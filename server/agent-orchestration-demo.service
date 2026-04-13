@@ -1,0 +1,22 @@
+[Unit]
+Description=Agent Orchestration Demo
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/agent-orchestration-demo
+EnvironmentFile=/opt/agent-orchestration-demo/.env
+ExecStart=/usr/bin/env npm start
+Restart=always
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/agent-orchestration-demo
+
+[Install]
+WantedBy=multi-user.target
