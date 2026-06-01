@@ -1,0 +1,12 @@
+sadie.kim, www.sadie.kim {
+  encode gzip zstd
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+
+  @www host www.sadie.kim
+  redir @www https://sadie.kim{uri} 308
+
+  reverse_proxy 127.0.0.1:3003
+}
