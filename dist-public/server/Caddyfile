@@ -8,5 +8,6 @@ sadie.kim, www.sadie.kim {
   @www host www.sadie.kim
   redir @www https://sadie.kim{uri} 308
 
-  reverse_proxy 127.0.0.1:3003
+  # Must match the app's PORT (.env / .env.example default = 3000).
+  reverse_proxy 127.0.0.1:3000
 }

@@ -51,6 +51,21 @@ function isAllowedRecipient(email, config) {
   return config.ALLOWED_EMAIL_RECIPIENTS.indexOf(String(email || '').trim().toLowerCase()) !== -1;
 }
 
+// ── GLOBAL RATE LIMIT ──
+// Apps Script gives no caller IP, so this is a coarse global cap per minute.
+// It bounds resource abuse (e.g. unlimited Google Doc creation) if the shared
+// token ever leaks. Tune RATE_LIMIT_PER_MIN as needed.
+var RATE_LIMIT_PER_MIN = 20;
+function checkRateLimit() {
+  var cache = CacheService.getScriptCache();
+  var bucket = 'rl_' + Math.floor(Date.now() / 60000);
+  var count = Number(cache.get(bucket) || 0);
+  if (count >= RATE_LIMIT_PER_MIN) {
+    throw new Error('Rate limit exceeded. Try again shortly.');
+  }
+  cache.put(bucket, String(count + 1), 120);
+}
+
 // ── WEB APP ENTRY POINT ──
 function doPost(e) {
   try {
@@ -59,8 +74,11 @@ function doPost(e) {
 
     // Validate token
     if (payload.token !== config.TOKEN) {
-      return jsonResponse({ error: 'Invalid token' }, 403);
+      return jsonResponse({ error: 'Invalid token' });
     }
+
+    // Global throttle so a leaked token can't spam Drive/Gmail without bound.
+    checkRateLimit();
 
     const action = payload.action;
     let result;
@@ -82,14 +100,15 @@ function doPost(e) {
         result = { status: 'ok', timestamp: new Date().toISOString() };
         break;
       default:
-        return jsonResponse({ error: 'Unknown action: ' + action }, 400);
+        return jsonResponse({ error: 'Unknown action: ' + action });
     }
 
     return jsonResponse({ success: true, result: result });
 
   } catch (err) {
+    // Log full detail server-side, but don't leak internals to the caller.
     Logger.log('Error: ' + err.toString());
-    return jsonResponse({ error: err.toString() }, 500);
+    return jsonResponse({ success: false, error: 'Request failed' });
   }
 }
 
@@ -543,7 +562,9 @@ function runFullOrchestration(data, config) {
 }
 
 // ── UTILITY ──
-function jsonResponse(data, code) {
+// Note: Apps Script web apps always return HTTP 200 — ContentService can't set a
+// status code — so success/failure must be signalled in the JSON body (success/error).
+function jsonResponse(data) {
   var output = ContentService.createTextOutput(JSON.stringify(data));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;

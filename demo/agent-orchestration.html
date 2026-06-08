@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.openai.com https://script.google.com; object-src 'none'; base-uri 'self'">
 <title>Agent Orchestration — Live Demo</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
@@ -1079,12 +1080,15 @@ function initLive(){
     return;
   }
   const manualKey=document.getElementById('api-key').value.trim();
-  const keyCandidate=(manualKey&&(manualKey.startsWith('sk-proj-')||manualKey.startsWith('sk-ant-')))?manualKey:_K;
+  // Live calls go to the OpenAI endpoint only, so accept OpenAI keys and reject Anthropic (sk-ant-) keys
+  // that would otherwise pass validation and then fail every request.
+  const isOpenAIKey=k=>k&&k.startsWith('sk-')&&!k.startsWith('sk-ant-');
+  const keyCandidate=isOpenAIKey(manualKey)?manualKey:_K;
   if(!keyCandidate){
     // Public mode, no key provided — politely redirect to simulation
     alert(S.lang==='ko'
-      ? 'API 키가 필요합니다. 위 입력란에 OpenAI 또는 Anthropic API 키를 입력하거나, "시뮬레이션 모드 실행"을 눌러주세요.'
-      : 'An API key is required. Enter your OpenAI or Anthropic key in the field above, or click "Run in Simulation Mode".');
+      ? 'OpenAI API 키가 필요합니다. 위 입력란에 OpenAI 키(sk-...)를 입력하거나, "시뮬레이션 모드 실행"을 눌러주세요.'
+      : 'An OpenAI API key is required. Enter your OpenAI key (sk-...) in the field above, or click "Run in Simulation Mode".');
     document.getElementById('api-key').style.opacity='1';
     document.getElementById('api-key').focus();
     return;
@@ -1099,7 +1103,7 @@ function initWithKey(){initLive();}
 function initSim(){
   S.sim=true;
   const manualKey=document.getElementById('api-key').value.trim();
-  S.apiKey=manualKey&&(manualKey.startsWith('sk-proj-')||manualKey.startsWith('sk-ant-'))?manualKey:_K;
+  S.apiKey=(manualKey&&manualKey.startsWith('sk-')&&!manualKey.startsWith('sk-ant-'))?manualKey:_K;
   document.getElementById('sim-mode-badge').style.display='block';
   document.getElementById('dbg-sim').checked=true;
   populateDropdown();
@@ -1126,7 +1130,7 @@ function selectScenario(sc){
   // Show description
   const desc=document.getElementById('scenario-desc');
   desc.style.display='block';
-  desc.innerHTML='<span style="color:var(--text);font-weight:500">'+d.name+'</span><br>'+d.label;
+  desc.innerHTML='<span style="color:var(--text);font-weight:500">'+escHtml(d.name)+'</span><br>'+escHtml(d.label);
   // Show prompt editor
   document.getElementById('prompt-input').value=d.goal;
   document.getElementById('prompt-edit').style.display='block';
@@ -1476,6 +1480,11 @@ function translateFeedMsg(msg){
   return out;
 }
 
+// ── Safe rich text: escape HTML first, then apply **bold** markup ──
+// Prevents model/scenario output from injecting executable HTML into innerHTML.
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function richText(s){return escHtml(s).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');}
+
 // Feed
 function feed(msg,cls='sys',indent=false){
   const el=document.createElement('div');
@@ -1786,7 +1795,7 @@ async function runForgeSim(fge){
       el.className='gd-summary';
       el.style.opacity='0';
       container.insertBefore(el,cursor);
-      el.innerHTML=block.v.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+      el.innerHTML=richText(block.v);
       requestAnimationFrame(()=>{el.style.transition='opacity .5s';el.style.opacity='1';});
       await wait(400);
     // Metric cards
@@ -1811,7 +1820,7 @@ async function runForgeSim(fge){
       const el=document.createElement('div');
       el.className='gd-callout'+(block.style?' '+block.style:'');
       el.style.opacity='0';
-      el.innerHTML=block.v.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+      el.innerHTML=richText(block.v);
       container.insertBefore(el,cursor);
       requestAnimationFrame(()=>{el.style.transition='opacity .4s';el.style.opacity='1';});
       await wait(350);
@@ -1826,7 +1835,7 @@ async function runForgeSim(fge){
         for(const item of block.v){
           const li=document.createElement('li');
           container.insertBefore(li,cursor);
-          if(item.includes('**')){li.innerHTML=item.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');await wait(TYPE_SPEED.body*item.length*0.3);}
+          if(item.includes('**')){li.innerHTML=richText(item);await wait(TYPE_SPEED.body*item.length*0.3);}
           else{await typeInto(li,item,TYPE_SPEED.body);}
           await wait(80);
         }
@@ -2039,13 +2048,13 @@ async function runForgeLive2(userGoal,scoutResults){
           // Detect callout type
           if(/^(?:WARNING|⚠)/i.test(raw)){
             callout.className='gd-callout warn';
-            callout.innerHTML=raw.replace(/^(?:WARNING|⚠)[:\s]*/i,'').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            callout.innerHTML=richText(raw.replace(/^(?:WARNING|⚠)[:\s]*/i,''));
           } else if(/^(?:TIP|✓|SUCCESS|APPROVED)/i.test(raw)){
             callout.className='gd-callout ok';
-            callout.innerHTML=raw.replace(/^(?:TIP|✓|SUCCESS|APPROVED)[:\s]*/i,'').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            callout.innerHTML=richText(raw.replace(/^(?:TIP|✓|SUCCESS|APPROVED)[:\s]*/i,''));
           } else {
             callout.className='gd-callout';
-            callout.innerHTML=raw.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            callout.innerHTML=richText(raw);
           }
           callout.style.opacity='0';
           container.insertBefore(callout,cursor);
@@ -2090,7 +2099,7 @@ async function runForgeLive2(userGoal,scoutResults){
           if(!ul||ul.tagName!=='UL'){ul=document.createElement('ul');container.insertBefore(ul,cursor);}
           const liEl=document.createElement('li');
           ul.appendChild(liEl);
-          if(text.includes('**')){liEl.innerHTML=text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');await wait(TYPE_SPEED.body*text.length*0.3);}
+          if(text.includes('**')){liEl.innerHTML=richText(text);await wait(TYPE_SPEED.body*text.length*0.3);}
           else{await typeInto(liEl,text,TYPE_SPEED.body);}
           const cleanBullet=text; // keep with ** for GAS bold rendering
           const last=structured[structured.length-1];
@@ -2115,7 +2124,7 @@ async function runForgeLive2(userGoal,scoutResults){
             structured.push({t:'summary',v:plainText});
             el=document.createElement('div');
             el.className='gd-summary';
-            el.innerHTML=line.trim().replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            el.innerHTML=richText(line.trim());
             el.style.opacity='0';
             container.insertBefore(el,cursor);
             requestAnimationFrame(()=>{el.style.transition='opacity .5s';el.style.opacity='1';});
@@ -2124,7 +2133,7 @@ async function runForgeLive2(userGoal,scoutResults){
           } else {
             structured.push({t:'p',v:plainText});
             el=document.createElement('p');
-            el.innerHTML=line.trim().replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            el.innerHTML=richText(line.trim());
             container.insertBefore(el,cursor);
             await wait(TYPE_SPEED.body*plainText.length*0.3);
           }

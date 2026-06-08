@@ -17,7 +17,9 @@ const DEFAULT_EMAIL_RECIPIENT = process.env.DEFAULT_EMAIL_RECIPIENT || ALLOWED_E
 const DEMO_FROM_NAME = process.env.DEMO_FROM_NAME || 'Agent Orchestration Demo';
 const DEMO_ACCESS_TOKEN = process.env.DEMO_ACCESS_TOKEN || '';
 
-app.set('trust proxy', true);
+// Trust only the local reverse proxy (Caddy on 127.0.0.1), not arbitrary
+// X-Forwarded-For headers — otherwise the rate limiter could be bypassed by spoofing.
+app.set('trust proxy', 'loopback');
 app.use(express.json({ limit: '256kb' }));
 
 function parseBoolean(value, fallback) {
@@ -46,14 +48,31 @@ function setSecurityHeaders(req, res, next) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Restrict where the page can load code from and, crucially, where it can send
+  // data — this bounds exfiltration if any HTML injection slips through.
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.openai.com https://script.google.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+  );
   next();
 }
 
 function createRateLimiter({ windowMs, max }) {
   const buckets = new Map();
+  let lastSweep = 0;
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
+
+    // Periodically purge expired buckets so the map can't grow unbounded
+    // across many distinct client IPs.
+    if (now - lastSweep > windowMs) {
+      for (const [key, rec] of buckets) {
+        if (now > rec.resetAt) buckets.delete(key);
+      }
+      lastSweep = now;
+    }
+
     const record = buckets.get(ip);
 
     if (!record || now > record.resetAt) {
@@ -259,7 +278,10 @@ app.post('/api/gas', async (req, res) => {
       payload = { success: false, error: 'Invalid GAS response', raw: text };
     }
 
-    return res.status(response.ok ? 200 : 502).json(payload);
+    // Apps Script always responds HTTP 200 (ContentService can't set a status),
+    // so decide success from the payload itself rather than response.ok.
+    const failed = !response.ok || !payload || payload.error || payload.success === false;
+    return res.status(failed ? 502 : 200).json(payload);
   } catch (error) {
     return res.status(502).json({ success: false, error: error.message || 'GAS request failed.' });
   }
