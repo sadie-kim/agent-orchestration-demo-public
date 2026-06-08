@@ -84,6 +84,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .nd.idle .ring{fill:transparent;stroke:#3a3a3a;stroke-width:1.5;transition:stroke .4s,stroke-width .4s,fill .4s}
 .nd.active .ring{fill:rgba(255,255,255,.03);stroke:var(--text);stroke-width:2.5}
 .nd.done .ring{stroke-width:2.5}
+.nd.skip{opacity:.32}
+.nd.skip .ring{fill:transparent;stroke:#333;stroke-width:1.5;stroke-dasharray:3 3}
+.nd.skip text.lbl{fill:#555}
 #nd-orc.done .ring{fill:rgba(16,185,129,.05);stroke:var(--ok)}
 #nd-sco.done .ring{fill:rgba(96,165,250,.05);stroke:var(--scout)}
 #nd-fge.done .ring{fill:rgba(245,158,11,.05);stroke:var(--forge)}
@@ -1066,7 +1069,43 @@ F:{
   her:{to:'demo-recipient@example.com',subj:'Sydney Office Market Report — Meridian for Solaris Tech',
     body:'Dear Lisa,\n\nPlease find Meridian\'s Sydney office market analysis, prepared specifically for Solaris Tech\'s expansion planning.\n\nHighlights:\n✓ CBD vacancy down to 11.2% — market tightening\n✓ Tech corridors showing 15% rent premium\n✓ Green building opportunities aligned with Solaris ESG goals\n\nI\'ve scheduled a consultation to discuss your options.\n\nBest regards,',
     evt:{title:'Solaris Tech Office Strategy — Meridian',time:'Tuesday, April 15, 2026 · 11:00–11:30 AM',day:15}}
-}};
+},
+G:{
+  name:'리서치 전용',
+  label:'RBA 금리 결정 빠른 시황 체크 (조사만)',
+  goal:'다음 주 RBA 금리 결정을 앞두고 호주 시장 상황만 빠르게 조사해서 핵심만 알려줘 — 문서나 이메일은 필요 없어',
+  path:['scout'],
+  orc:{lines:['Analyzing goal: "Quick market check — RBA decision"','Intent: research only — no document or message to produce','Task 1 → Scout: research RBA outlook + ASX/AUD reaction']},
+  sco:{searches:[
+    {q:'"RBA April 2026 cash rate decision expectations"',r:['Market pricing ~60% chance of a hold','Inflation eased to 2.9% — within target band','3 of 4 big banks forecast no change']},
+    {q:'"ASX200 AUD reaction RBA April 2026"',r:['ASX200 flat ahead of the decision','AUD/USD holding 0.67 on stable terms of trade','2yr bond yield steady at 3.8%']},
+    {q:'"Australian consumer spending Q1 2026"',r:['Retail spend +0.4% MoM, services-led','Household savings ratio up to 4.1%']}
+  ],summary:'9 data points. Consensus: RBA holds at 4.10% next week (inflation in band). Low surprise risk — no portfolio action needed pre-decision.'}
+},
+H:{
+  name:'문서 초안 (발송 X)',
+  label:'팀 내부 자산배분 메모 초안 (발송하지 않음)',
+  goal:'다음 분기 자산배분 변경에 대한 내부 검토 메모 초안만 작성해줘 — 아직 아무한테도 보내지 마',
+  path:['scout','forge'],
+  orc:{lines:['Analyzing goal: "Internal allocation memo — draft only"','Intent: produce a document, but explicitly do NOT send it','Task 1 → Scout: research allocation-shift rationale','Task 2 → Forge: draft the internal review memo']},
+  sco:{searches:[
+    {q:'"strategic asset allocation 2026 rate-cut cycle"',r:['Equity overweight favoured early in a cutting cycle','Duration extension recommended as cuts begin','Cash drag rising — redeploy idle balances']},
+    {q:'"Australian equities vs fixed income outlook 2026"',r:['AU equities: earnings revisions turning positive','Balanced books typically hold 25–30% fixed income','Alternatives gaining share for diversification']}
+  ],summary:'Draft basis: tilt +5% AU equities, trim fixed income 28%→23%, extend duration. For internal review before any client action.'},
+  fge:{title:'Internal Memo — Q3 Allocation Review (DRAFT)',content:[
+    {t:'h1',v:'Q3 Asset Allocation Review — Internal Draft'},
+    {t:'summary',v:'**Draft for internal review only.** Proposes a tactical tilt toward AU equities ahead of the rate-cut cycle. **Not for client distribution** until the investment committee signs off.'},
+    {t:'metrics',v:[{label:'Proposed AU Equity',val:'+5%'},{label:'Fixed Income',val:'28% → 23%'},{label:'Duration',val:'Extend'},{label:'Status',val:'Draft'}]},
+    {t:'hr'},
+    {t:'h2',v:'Rationale'},
+    {t:'ul',v:['Early rate-cut cycle historically favours an **equity overweight**','**Duration extension** captures the falling-yield tailwind','Reduce **cash drag** by redeploying idle balances']},
+    {t:'callout',v:'This memo is a **draft** — do not send to clients until the investment committee approves.',style:'warn'},
+    {t:'h2',v:'Next Steps'},
+    {t:'ul',v:['Circulate to the investment committee for review','Revisit after the RBA decision next week']},
+    {t:'p',v:'Prepared by Meridian Wealth Advisory · Internal use only'}
+  ]}
+}
+};
 
 function initLive(){
   if(S.apiMode==='proxy'){
@@ -1603,6 +1642,13 @@ async function runOrchestration(d){
   // Shared state for passing data between agents
   const chain={scoutResults:null,forgeDoc:null,forgeTitle:null};
 
+  // Which agents this goal actually needs. Defaults to the full pipeline so
+  // existing scenarios are unchanged; scenarios can declare a shorter `path`
+  // so the orchestrator routes dynamically (e.g. research-only).
+  const AGENT_NAMES={scout:'Scout',forge:'Forge',herald:'Herald'};
+  const path=Array.isArray(d.path)?d.path:['scout','forge','herald'];
+  const skipped=['forge','herald'].filter(a=>!path.includes(a));
+
   feed('──────────────────────────────','sys');
   feed('[SYSTEM] Orchestration started','sys');
   feed('Goal: '+userGoal,'orc');
@@ -1628,6 +1674,14 @@ async function runOrchestration(d){
   } else {
     await feedDelay(d.orc.lines,'orc',550);
   }
+  // Dynamic routing: the orchestrator decides which agents this goal needs.
+  if(skipped.length){
+    feed('[ORCHESTRATOR] Routing: this goal needs '+path.map(a=>AGENT_NAMES[a]).join(' + ')+' — '+skipped.map(a=>AGENT_NAMES[a]).join(', ')+' not required','orc');
+    skipped.forEach(a=>setNode(a==='forge'?'nd-fge':'nd-her','skip'));
+  } else {
+    feed('[ORCHESTRATOR] Routing: full pipeline — Scout → Forge → Herald','orc');
+  }
+  await wait(450);
   feed('[ORCHESTRATOR] Dispatching Scout...','orc');
   await wait(400);
 
@@ -1669,7 +1723,8 @@ async function runOrchestration(d){
     await wait(300);
   }
 
-  // Phase 3: Forge
+  // Phase 3: Forge (only if the goal needs a document)
+  if(path.includes('forge')){
   setConn('c-orc-fge','active');
   await wait(400);
   setNode('nd-fge','active');
@@ -1728,7 +1783,10 @@ async function runOrchestration(d){
     await wait(300);
   }
 
-  // Phase 4: Herald
+  } // end Forge phase
+
+  // Phase 4: Herald (only if the goal needs an email/calendar action)
+  if(path.includes('herald')){
   setConn('c-orc-her','active');
   await wait(400);
   setNode('nd-her','active');
@@ -1756,10 +1814,11 @@ async function runOrchestration(d){
   await wait(800);
   setSkill('sk-her-cal','done');
   setNode('nd-her','done');setConn('c-orc-her','done');
-  setNode('nd-orc','done');
   document.getElementById('tab-gmail').classList.add('done');
   document.getElementById('tab-cal').classList.add('done');
+  } // end Herald phase
 
+  setNode('nd-orc','done');
   // Done
   clearInterval(S.timer);
   const _stDone=document.getElementById('status');
