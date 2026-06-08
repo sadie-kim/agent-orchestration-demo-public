@@ -54,8 +54,27 @@ or paying for every anonymous visitor. I wanted a demo that is **safe to publish
 - [x] Dynamic tool-selection — the orchestrator routes per goal; scenarios declare a `path` and unused agents are skipped & dimmed
 - [x] `prefers-reduced-motion`, ARIA-live activity feed, color-independent (▲/▼) metrics, keyboard focus styles
 - [x] Bring-your-own Google bridge (connect real Docs/Gmail/Calendar — see below)
+- [x] Build step — develop in `src/` modules, ship a single self-contained HTML
 - [ ] Real token streaming (intentionally deferred — the doc renderer parses the full response into a metrics/callout layout, so streaming would break that output)
 - [ ] Parser unit tests (the markdown→blocks parser is DOM-coupled)
+
+## Development
+
+The demo is authored as modules in `src/` and bundled into the single file the static
+host serves:
+
+- `src/index.html` — the page shell (head, body markup, `<style>`/`<script>` markers)
+- `src/styles.css` — all styles
+- `src/app.js` — all app logic
+
+```bash
+npm install
+npm run build   # esbuild → demo/agent-orchestration.html (CSS minified, JS whitespace
+                # minified; identifiers are NOT renamed so inline on* handlers keep working)
+npm test        # XSS-escape regression tests (run against src/app.js)
+```
+
+`demo/agent-orchestration.html` is a generated artifact — **edit `src/`, then rebuild.**
 
 ---
 

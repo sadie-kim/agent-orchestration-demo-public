@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.openai.com https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self'">
+<title>Agent Orchestration — Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+
+<!-- LANGUAGE TOGGLE (always visible, top-right) -->
+<div id="lang-toggle">
+  <button id="lang-en" onclick="setLang('en')">EN</button>
+  <button id="lang-ko" onclick="setLang('ko')">한국어</button>
+</div>
+
+<!-- SETUP -->
+<div id="setup">
+  <h1 data-i18n="setup.title">Agent Orchestration</h1>
+  <p class="sub" data-i18n="setup.sub">Meridian Wealth Advisory — Live Demo</p>
+  <button class="bp" onclick="initLive()" data-i18n="setup.start">Start Live Demo →</button>
+  <div class="setup-fields">
+    <div class="setup-field">
+      <label for="recipient-email" data-i18n="setup.recipientLabel">Recipient email</label>
+      <input class="si" id="recipient-email" type="email" placeholder="demo-recipient@example.com" autocomplete="email">
+    </div>
+    <div class="setup-field" id="demo-token-field" style="display:none">
+      <label for="demo-access-token" data-i18n="setup.accessTokenLabel">Demo access token</label>
+      <input class="si" id="demo-access-token" type="password" placeholder="Required by this server" autocomplete="off">
+    </div>
+  </div>
+  <div class="divider" id="setup-divider" data-i18n="setup.or">or</div>
+  <button class="bg" onclick="initSim()" data-i18n="setup.sim">Run in Simulation Mode</button>
+  <input class="si" id="api-key" type="password" placeholder="Or enter a different API key..." data-i18n-ph="setup.apikey" style="opacity:.3;font-size:10px" onfocus="this.style.opacity=1" onblur="if(!this.value)this.style.opacity=.3">
+  <select class="si" id="model-select" title="Model used in live mode" onchange="S.model=this.value" style="font-size:10px;opacity:.5;margin-top:6px" onfocus="this.style.opacity=1">
+    <option value="gpt-4o" selected>gpt-4o (default)</option>
+    <option value="gpt-4o-mini">gpt-4o-mini (faster/cheaper)</option>
+    <option value="gpt-4.1">gpt-4.1</option>
+    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+  </select>
+  <details id="gas-advanced" style="margin-top:10px;width:300px;text-align:left">
+    <summary style="cursor:pointer;color:var(--text2);font-size:10px;letter-spacing:.5px;opacity:.6">Connect your Google (optional — real Docs / Gmail / Calendar)</summary>
+    <input class="si" id="gas-endpoint" type="text" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" spellcheck="false" style="display:block;width:100%;font-size:10px;margin-top:6px">
+    <input class="si" id="gas-token" type="password" placeholder="Apps Script shared token" autocomplete="off" style="display:block;width:100%;font-size:10px;margin-top:4px">
+    <p style="color:var(--text2);font-size:9px;line-height:1.5;opacity:.75;margin-top:6px">Deploy <code>scripts/google-apps-script.js</code> as a Web App, set its <code>TOKEN</code> + allowed recipients, then paste the URL + token here. They stay in your browser; actions run on your own Google account, and the recipient allowlist is enforced by your script. Leave blank to keep Google actions simulated.</p>
+  </details>
+  <p class="setup-note" id="setup-note"></p>
+  <p class="setup-note" id="delivery-note"></p>
+</div>
+
+<!-- SCENARIO SELECT -->
+<div id="scenario-select">
+  <h2 data-i18n="scenario.title">Select Scenario</h2>
+  <div style="width:480px">
+    <select id="scenario-dropdown" onchange="selectScenario(this.value)" style="width:100%;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23555%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 14px center;outline:none;transition:border-color .2s">
+      <option value="" disabled selected style="color:#888" data-i18n="scenario.placeholder">Choose a scenario...</option>
+    </select>
+    <div id="scenario-desc" style="margin-top:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);display:none;font-size:11px;color:var(--text2);line-height:1.7"></div>
+  </div>
+  <div id="prompt-edit" style="display:none;width:480px;margin-top:20px">
+    <label style="font-size:9px;letter-spacing:3px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:8px" data-i18n="scenario.promptLabel">Prompt — edit freely</label>
+    <textarea id="prompt-input" style="width:100%;height:80px;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;resize:vertical;line-height:1.6;outline:none" spellcheck="false"></textarea>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button onclick="runWithPrompt()" style="padding:10px 32px;background:var(--ok);color:#fff;border:none;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:1px" data-i18n="scenario.run">Run ▶</button>
+      <button onclick="skipAndRun()" style="padding:10px 20px;background:transparent;color:var(--text2);border:1px solid var(--border);font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:.5px;transition:all .2s" onmouseover="this.style.borderColor='#3a3a3a';this.style.color='var(--text)'" onmouseout="this.style.borderColor='';this.style.color=''" data-i18n="scenario.skip">Skip → Run Default</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN DEMO -->
+<div id="demo">
+  <div id="top-bar">
+    <span id="sc-label" data-i18n="topbar.scenario">Scenario</span>
+    <span id="sc-name">—</span>
+    <label id="reviewer-toggle" title="AI Review Agent: auto-reviews each step instead of manual approval">
+      <span class="rv-label" data-i18n="topbar.aiReviewer">AI Reviewer</span>
+      <input type="checkbox" id="rv-check" checked onchange="S.aiReview=this.checked;document.getElementById('rv-status').textContent=this.checked?t('topbar.on'):t('topbar.off');document.getElementById('rv-status').className=this.checked?'rv-on':'rv-off'">
+      <span class="rv-slider"></span>
+      <span id="rv-status" class="rv-on" data-i18n="topbar.on">ON</span>
+    </label>
+    <span id="status" data-i18n="topbar.idle">Idle</span>
+    <span id="timer">00:00</span>
+    <button id="reset-btn" onclick="resetDemo()" data-i18n="topbar.reset">↺ Reset</button>
+  </div>
+  <div id="panels">
+    <!-- LEFT -->
+    <div id="left-panel">
+      <div id="diagram-area">
+        <svg id="diagram" viewBox="0 0 560 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Connection lines -->
+          <path id="c-orc-sco" class="conn" d="M280,75 C280,130 100,130 100,152"/>
+          <path id="c-orc-fge" class="conn" d="M280,75 L280,152"/>
+          <path id="c-orc-her" class="conn" d="M280,75 C280,130 460,130 460,152"/>
+          <!-- Orchestrator node -->
+          <g id="nd-orc" class="nd idle">
+            <circle class="pulse" cx="280" cy="42" r="32" fill="none" stroke="var(--text)" stroke-width="1"/>
+            <circle class="ring" cx="280" cy="42" r="32"/>
+            <text class="lbl" x="280" y="38" data-i18n-svg="agent.orc1">ORCHES-</text>
+            <text class="lbl" x="280" y="51" data-i18n-svg="agent.orc2">TRATOR</text>
+            <text class="check" x="280" y="46" fill="var(--ok)" text-anchor="middle" font-size="14">✓</text>
+          </g>
+          <!-- Scout node -->
+          <g id="nd-sco" class="nd idle">
+            <circle class="pulse" cx="100" cy="178" r="26" fill="none" stroke="var(--scout)" stroke-width="1"/>
+            <circle class="ring" cx="100" cy="178" r="26"/>
+            <text class="lbl" x="100" y="175" data-i18n-svg="agent.sco">SCOUT</text>
+            <text class="sk" x="100" y="214">web_search</text>
+            <text class="check" x="100" y="183" fill="var(--scout)" text-anchor="middle" font-size="12">✓</text>
+          </g>
+          <!-- Forge node -->
+          <g id="nd-fge" class="nd idle">
+            <circle class="pulse" cx="280" cy="178" r="26" fill="none" stroke="var(--forge)" stroke-width="1"/>
+            <circle class="ring" cx="280" cy="178" r="26"/>
+            <text class="lbl" x="280" y="175" data-i18n-svg="agent.fge">FORGE</text>
+            <text class="sk" x="280" y="214">docs_create</text>
+            <text class="check" x="280" y="183" fill="var(--forge)" text-anchor="middle" font-size="12">✓</text>
+          </g>
+          <!-- Herald node -->
+          <g id="nd-her" class="nd idle">
+            <circle class="pulse" cx="460" cy="178" r="26" fill="none" stroke="var(--herald)" stroke-width="1"/>
+            <circle class="ring" cx="460" cy="178" r="26"/>
+            <text class="lbl" x="460" y="175" data-i18n-svg="agent.her">HERALD</text>
+            <text class="sk" x="460" y="210">send_email</text>
+            <text class="sk" x="460" y="222">create_event</text>
+            <text class="check" x="460" y="183" fill="var(--herald)" text-anchor="middle" font-size="12">✓</text>
+          </g>
+          <!-- Skill tags below nodes -->
+          <g id="sk-sco-search" class="skill-tag">
+            <rect x="48" y="228" width="104" height="20" rx="3"/>
+            <text x="100" y="241">web_search</text>
+          </g>
+          <g id="sk-fge-doc" class="skill-tag">
+            <rect x="218" y="228" width="124" height="20" rx="3"/>
+            <text x="280" y="241">create_google_doc</text>
+          </g>
+          <g id="sk-her-email" class="skill-tag">
+            <rect x="405" y="222" width="110" height="18" rx="3"/>
+            <text x="460" y="234">send_email</text>
+          </g>
+          <g id="sk-her-cal" class="skill-tag">
+            <rect x="399" y="244" width="122" height="18" rx="3"/>
+            <text x="460" y="256">create_calendar</text>
+          </g>
+        </svg>
+      </div>
+      <div class="splitter-h" id="splitter-h"></div>
+      <div id="feed">
+        <div id="feed-hdr" data-i18n="feed.header">Activity Feed</div>
+        <div id="feed-body" role="log" aria-live="polite" aria-relevant="additions" aria-label="Agent activity feed"></div>
+      </div>
+    </div>
+    <div class="splitter-v" id="splitter-v"></div>
+    <!-- RIGHT -->
+    <div id="right-panel">
+      <div id="app-tabs">
+        <button class="at on" data-app="waiting" id="tab-waiting" data-i18n="tab.waiting">Waiting</button>
+        <button class="at" data-app="docs" id="tab-docs">Google Docs</button>
+        <button class="at" data-app="gmail" id="tab-gmail">Gmail</button>
+        <button class="at" data-app="cal" id="tab-cal">Calendar</button>
+      </div>
+      <div id="app-content">
+        <div id="waiting-panel" class="ap vis">
+          <p data-i18n="waiting.text">Waiting for agents</p>
+          <div><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span></div>
+        </div>
+        <!-- Google Docs -->
+        <div id="docs-app" class="ap">
+          <div class="gd-bar">
+            <div class="gd-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="#4285F4"/><path d="M14 2v6h6" fill="#1565C0" opacity=".5"/><rect x="8" y="13" width="8" height="1.5" rx=".75" fill="white"/><rect x="8" y="16" width="6" height="1.5" rx=".75" fill="white"/></svg></div>
+            <span class="gd-title" id="docs-title">New Document</span>
+          </div>
+          <div class="gd-doc" id="docs-doc-wrap">
+            <div class="gd-letterhead" id="gd-letterhead">
+              <div class="gd-logo">
+                <span class="gd-logo-badge">MW</span>
+                <div class="gd-logo-text">
+                  <span class="gd-logo-name">MERIDIAN WEALTH ADVISORY</span>
+                  <span class="gd-logo-sub">Financial Advisory &middot; Wealth Management</span>
+                </div>
+              </div>
+              <div class="gd-logo-info">
+                Level 12, 88 Pitt Street<br>
+                Sydney NSW 2000<br>
+                ABN 47 612 903 158
+              </div>
+            </div>
+            <div id="docs-content"></div>
+            <div class="gd-footer" id="gd-footer">
+              <span class="gd-footer-badge">MW</span>
+              <div class="gd-footer-text">
+                Meridian Wealth Advisory &middot; ABN 47 612 903 158 &middot; Level 12, 88 Pitt Street, Sydney NSW 2000<br>
+                This document is confidential and prepared for the intended recipient only.
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Gmail -->
+        <div id="gmail-app" class="ap">
+          <div class="gm-bar">
+            <span class="gm-logo">M</span>
+            <span style="font-family:Arial,sans-serif;font-size:20px;font-weight:400;color:#5f6368;letter-spacing:-1px">ail</span>
+          </div>
+          <div class="gm-compose" id="gm-compose">
+            <div class="gm-ch">
+              <span>New Message</span>
+              <span style="font-size:16px;cursor:pointer;opacity:.7">—  ×</span>
+            </div>
+            <div class="gm-f"><span class="gm-fl">To</span><span class="gm-fv" id="gm-to"></span></div>
+            <div class="gm-f"><span class="gm-fl">Subj</span><span class="gm-fv" id="gm-subj"></span></div>
+            <div class="gm-brand" id="gm-brand">
+              <span class="gm-brand-badge">MW</span>
+              <div class="gm-brand-text">
+                <span class="gm-brand-name">Meridian Wealth Advisory</span>
+                <span class="gm-brand-sub">Financial Advisory · Wealth Management</span>
+              </div>
+            </div>
+            <div class="gm-body" id="gm-body"></div>
+            <div class="gm-sig" id="gm-sig">
+              <span class="gm-sig-badge">MW</span>
+              <div class="gm-sig-info">
+                <div class="gm-sig-name">Sadie Kim</div>
+                <div class="gm-sig-role">Senior Advisor · Meridian Wealth Advisory</div>
+                <div class="gm-sig-addr">Level 12, 88 Pitt Street, Sydney NSW 2000<br>T: +61 2 9188 4200 · ABN 47 612 903 158</div>
+              </div>
+            </div>
+            <div class="gm-disclaimer" id="gm-disclaimer">This email and any attachments are confidential and intended for the named recipient only.</div>
+            <div class="gm-actions">
+              <button class="gm-send" id="gm-send-btn">Send</button>
+              <span style="font-size:11px;color:#777;font-family:Arial,sans-serif" id="gm-sending" hidden>Sending...</span>
+            </div>
+          </div>
+          <div class="gm-sent" id="gm-sent" hidden>
+            <div class="gm-sent-icon">✉️</div>
+            <div class="gm-sent-msg">Email Sent</div>
+            <div class="gm-sent-sub" id="gm-sent-to"></div>
+          </div>
+        </div>
+        <!-- Calendar -->
+        <div id="cal-app" class="ap">
+          <div class="gc-bar" id="gc-month">April 2026</div>
+          <div class="gc-week" id="gc-week"></div>
+          <div id="gc-event-detail" hidden style="margin:0 16px;padding:14px;border:1px solid #e0e0e0;border-left:3px solid var(--herald);border-radius:4px;font-family:Arial,sans-serif">
+            <div style="font-size:13px;font-weight:500;color:#7c3aed;margin-bottom:6px" id="gc-evt-title"></div>
+            <div style="font-size:12px;color:#555" id="gc-evt-time"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Simulation badge -->
+<div id="sim-mode-badge" data-i18n="simBadge">Simulation Mode</div>
+<div id="fiction-label" style="position:fixed;bottom:14px;left:14px;font-size:9px;letter-spacing:1px;color:var(--text2);opacity:.7;z-index:200;pointer-events:none">Fictional demo · sample data</div>
+
+<!-- HUMAN APPROVAL MODAL -->
+<div id="approval-overlay">
+  <div id="approval-box">
+    <div class="ap-header">
+      <span class="ap-badge" data-i18n="modal.humanReview">Human Review</span>
+      <span class="ap-title" id="ap-title">Approve Output</span>
+      <span class="ap-agent" id="ap-agent">Scout</span>
+    </div>
+    <div class="ap-body">
+      <div class="ap-preview" id="ap-preview"></div>
+      <textarea class="ap-edit-area" id="ap-edit-area" placeholder="Edit the content here..." data-i18n-ph="modal.editPlaceholder"></textarea>
+    </div>
+    <div class="ap-footer">
+      <button class="ap-btn ap-approve" id="ap-approve-btn" data-i18n="modal.approve">Approve & Continue</button>
+      <button class="ap-btn ap-edit" id="ap-edit-btn" data-i18n="modal.edit">Edit</button>
+      <button class="ap-btn ap-retry" id="ap-retry-btn" style="display:none" data-i18n="modal.retry">↻ Retry Agent</button>
+      <button class="ap-btn ap-skip" id="ap-skip-btn" data-i18n="modal.skip">Skip (auto-approve)</button>
+      <span class="ap-count" id="ap-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden debug panel (Ctrl+Shift+D) -->
+<div id="dbg">
+  <label>Sim Mode <input type="checkbox" id="dbg-sim" onchange="toggleSimMode(this.checked)"></label>
+  <button onclick="resetDemo()" style="background:transparent;border:1px solid var(--border);color:var(--text2);font-family:var(--mono);font-size:10px;padding:3px 10px;cursor:pointer">Reset</button>
+</div>
+
+<!-- Optional local keys (gitignored, loaded only in private dev) -->
+<script src="keys.local.js" onerror="/* file absent — public mode */"></script>
+<script>
+/*__APP_JS__*/
+</script>
+</body>
+</html>

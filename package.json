@@ -5,6 +5,7 @@
   "description": "Public-facing agent orchestration demo with a server-managed API proxy",
   "scripts": {
     "start": "node server/index.js",
+    "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "engines": {
@@ -12,5 +13,8 @@
   },
   "dependencies": {
     "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }

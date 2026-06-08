@@ -18,5 +18,7 @@ jobs:
         run: |
           node --check server/index.js
           node --check scripts/google-apps-script.js
+      - name: Build single-file demo from src/
+        run: npm run build
       - name: Run tests (HTML-escape XSS regression)
         run: npm test

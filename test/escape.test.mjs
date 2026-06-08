@@ -12,12 +12,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const html = readFileSync(join(here, '..', 'demo', 'agent-orchestration.html'), 'utf8');
+// Read the source module (unminified); the shipped HTML is built from it.
+const html = readFileSync(join(here, '..', 'src', 'app.js'), 'utf8');
 
 function extract(name) {
   // Each helper is defined on a single line: `function name(...){...}`
   const line = html.split('\n').find((l) => l.trimStart().startsWith(`function ${name}(`));
-  assert.ok(line, `could not find function ${name} in the shipped HTML`);
+  assert.ok(line, `could not find function ${name} in src/app.js`);
   return line.trim();
 }
 
