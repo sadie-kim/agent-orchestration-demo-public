@@ -4,7 +4,8 @@
   "private": true,
   "description": "Public-facing agent orchestration demo with a server-managed API proxy",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "node --test test/*.test.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 :root{
   --bg:#060606;--bg2:#0e0e0e;--bg3:#161616;
   --border:#1e1e1e;--border2:#2a2a2a;
@@ -549,6 +550,7 @@ html[lang="ko"]{font-family:'IBM Plex Mono','Noto Sans KR',monospace}
 
 <!-- Simulation badge -->
 <div id="sim-mode-badge" data-i18n="simBadge">Simulation Mode</div>
+<div id="fiction-label" style="position:fixed;bottom:14px;left:14px;font-size:9px;letter-spacing:1px;color:var(--text2);opacity:.55;z-index:200;pointer-events:none">Fictional demo · sample data</div>
 
 <!-- HUMAN APPROVAL MODAL -->
 <div id="approval-overlay">
@@ -2411,7 +2413,9 @@ async function callAPISearch(sys,user){
 
 // ── TYPE ANIMATION ──
 const TYPE_SPEED={title:20,heading:20,body:14,email:16,fast:10};
+const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 async function typeInto(el,text,speed=TYPE_SPEED.body){
+  if(reduceMotion){el.textContent=text;return;} // a11y: no typing animation
   for(let i=0;i<=text.length;i++){
     el.textContent=text.slice(0,i);
     await wait(speed);
