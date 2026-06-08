@@ -356,10 +356,10 @@ html[lang="ko"]{font-family:'IBM Plex Mono','Noto Sans KR',monospace}
     <option value="gpt-4.1">gpt-4.1</option>
     <option value="gpt-4.1-mini">gpt-4.1-mini</option>
   </select>
-  <details id="gas-advanced" style="margin-top:10px;text-align:left">
+  <details id="gas-advanced" style="margin-top:10px;width:300px;text-align:left">
     <summary style="cursor:pointer;color:var(--text2);font-size:10px;letter-spacing:.5px;opacity:.6">Connect your Google (optional — real Docs / Gmail / Calendar)</summary>
-    <input class="si" id="gas-endpoint" type="text" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" spellcheck="false" style="font-size:10px;margin-top:6px">
-    <input class="si" id="gas-token" type="password" placeholder="Apps Script shared token" autocomplete="off" style="font-size:10px;margin-top:4px">
+    <input class="si" id="gas-endpoint" type="text" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" spellcheck="false" style="display:block;width:100%;font-size:10px;margin-top:6px">
+    <input class="si" id="gas-token" type="password" placeholder="Apps Script shared token" autocomplete="off" style="display:block;width:100%;font-size:10px;margin-top:4px">
     <p style="color:var(--text2);font-size:9px;line-height:1.5;opacity:.55;margin-top:6px">Deploy <code>scripts/google-apps-script.js</code> as a Web App, set its <code>TOKEN</code> + allowed recipients, then paste the URL + token here. They stay in your browser; actions run on your own Google account, and the recipient allowlist is enforced by your script. Leave blank to keep Google actions simulated.</p>
   </details>
   <p class="setup-note" id="setup-note"></p>
