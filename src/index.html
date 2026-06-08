@@ -24,7 +24,18 @@
 <div id="setup">
   <h1 data-i18n="setup.title">Agent Orchestration</h1>
   <p class="sub" data-i18n="setup.sub">Meridian Wealth Advisory — Live Demo</p>
+  <!-- Live mode: paste a key then Start; or run the simulation with no key. -->
+  <input class="si" id="api-key" type="password" placeholder="OpenAI API key (sk-…) for live mode — optional" data-i18n-ph="setup.apikey" style="opacity:.6" onfocus="this.style.opacity=1" onblur="if(!this.value)this.style.opacity=.6">
   <button class="bp" onclick="initLive()" data-i18n="setup.start">Start Live Demo →</button>
+  <div class="divider" id="setup-divider" data-i18n="setup.or">or</div>
+  <button class="bg" onclick="initSim()" data-i18n="setup.sim">Run in Simulation Mode</button>
+  <!-- Live options (only used in live / connected-Google mode) -->
+  <select class="si" id="model-select" title="Model used in live mode" onchange="S.model=this.value" style="font-size:10px;opacity:.5;margin-top:6px" onfocus="this.style.opacity=1">
+    <option value="gpt-4o" selected>gpt-4o (default)</option>
+    <option value="gpt-4o-mini">gpt-4o-mini (faster/cheaper)</option>
+    <option value="gpt-4.1">gpt-4.1</option>
+    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+  </select>
   <div class="setup-fields">
     <div class="setup-field">
       <label for="recipient-email" data-i18n="setup.recipientLabel">Recipient email</label>
@@ -35,15 +46,6 @@
       <input class="si" id="demo-access-token" type="password" placeholder="Required by this server" autocomplete="off">
     </div>
   </div>
-  <div class="divider" id="setup-divider" data-i18n="setup.or">or</div>
-  <button class="bg" onclick="initSim()" data-i18n="setup.sim">Run in Simulation Mode</button>
-  <input class="si" id="api-key" type="password" placeholder="Or enter a different API key..." data-i18n-ph="setup.apikey" style="opacity:.3;font-size:10px" onfocus="this.style.opacity=1" onblur="if(!this.value)this.style.opacity=.3">
-  <select class="si" id="model-select" title="Model used in live mode" onchange="S.model=this.value" style="font-size:10px;opacity:.5;margin-top:6px" onfocus="this.style.opacity=1">
-    <option value="gpt-4o" selected>gpt-4o (default)</option>
-    <option value="gpt-4o-mini">gpt-4o-mini (faster/cheaper)</option>
-    <option value="gpt-4.1">gpt-4.1</option>
-    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-  </select>
   <details id="gas-advanced" style="margin-top:10px;width:300px;text-align:left">
     <summary style="cursor:pointer;color:var(--text2);font-size:10px;letter-spacing:.5px;opacity:.6">Connect your Google (optional — real Docs / Gmail / Calendar)</summary>
     <input class="si" id="gas-endpoint" type="text" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" spellcheck="false" style="display:block;width:100%;font-size:10px;margin-top:6px">

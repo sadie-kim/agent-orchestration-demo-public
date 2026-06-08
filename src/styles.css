@@ -312,3 +312,17 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 #lang-toggle button.on{color:var(--text);background:rgba(255,255,255,.08)}
 #lang-toggle button+button{border-left:1px solid var(--border)}
 html[lang="ko"]{font-family:'IBM Plex Mono','Noto Sans KR',monospace}
+
+/* ── Responsive: stack the two panes on narrow screens so the output panel
+   (Docs/Gmail/Calendar) isn't pushed off-screen, and let the top bar wrap. ── */
+@media (max-width:820px){
+  #panels{flex-direction:column;overflow-y:auto;overflow-x:hidden}
+  #left-panel,#right-panel{width:100%;min-width:0}
+  #left-panel{flex:none}
+  #diagram-area{height:200px;padding:12px 14px}
+  #feed{flex:none;min-height:260px}
+  #right-panel{flex:none;min-height:72vh;border-top:1px solid var(--border)}
+  .splitter-v,.splitter-h{display:none}
+  #top-bar{padding:7px 78px 7px 14px;gap:7px 10px;flex-wrap:wrap;height:auto;min-height:46px}
+  #setup{padding:24px}
+}
