@@ -7,14 +7,14 @@
 <title>Agent Orchestration — Live Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 :root{
   --bg:#060606;--bg2:#0e0e0e;--bg3:#161616;
   --border:#1e1e1e;--border2:#2a2a2a;
-  --text:#e8e8e8;--text2:#555;--text3:#2e2e2e;
+  --text:#e8e8e8;--text2:#808080;--text3:#2e2e2e;
   --orc:#ffffff;--scout:#60a5fa;--forge:#f59e0b;--herald:#c084fc;
   --ok:#10b981;--err:#ef4444;
   --mono:'IBM Plex Mono',monospace;--disp:'Syne',sans-serif;
@@ -27,6 +27,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 #setup .sub{color:var(--text2);font-size:12px;letter-spacing:.5px}
 .si{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:11px 16px;width:300px;outline:none;transition:border-color .2s}
 .si:focus{border-color:#3a3a3a}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--scout);outline-offset:2px;border-radius:2px}
 .si::placeholder{color:var(--text2)}
 .setup-fields{display:flex;flex-direction:column;gap:8px;width:300px}
 .setup-field label{display:block;color:var(--text2);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
@@ -360,7 +361,7 @@ html[lang="ko"]{font-family:'IBM Plex Mono','Noto Sans KR',monospace}
     <summary style="cursor:pointer;color:var(--text2);font-size:10px;letter-spacing:.5px;opacity:.6">Connect your Google (optional — real Docs / Gmail / Calendar)</summary>
     <input class="si" id="gas-endpoint" type="text" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" spellcheck="false" style="display:block;width:100%;font-size:10px;margin-top:6px">
     <input class="si" id="gas-token" type="password" placeholder="Apps Script shared token" autocomplete="off" style="display:block;width:100%;font-size:10px;margin-top:4px">
-    <p style="color:var(--text2);font-size:9px;line-height:1.5;opacity:.55;margin-top:6px">Deploy <code>scripts/google-apps-script.js</code> as a Web App, set its <code>TOKEN</code> + allowed recipients, then paste the URL + token here. They stay in your browser; actions run on your own Google account, and the recipient allowlist is enforced by your script. Leave blank to keep Google actions simulated.</p>
+    <p style="color:var(--text2);font-size:9px;line-height:1.5;opacity:.75;margin-top:6px">Deploy <code>scripts/google-apps-script.js</code> as a Web App, set its <code>TOKEN</code> + allowed recipients, then paste the URL + token here. They stay in your browser; actions run on your own Google account, and the recipient allowlist is enforced by your script. Leave blank to keep Google actions simulated.</p>
   </details>
   <p class="setup-note" id="setup-note"></p>
   <p class="setup-note" id="delivery-note"></p>
@@ -569,7 +570,7 @@ html[lang="ko"]{font-family:'IBM Plex Mono','Noto Sans KR',monospace}
 
 <!-- Simulation badge -->
 <div id="sim-mode-badge" data-i18n="simBadge">Simulation Mode</div>
-<div id="fiction-label" style="position:fixed;bottom:14px;left:14px;font-size:9px;letter-spacing:1px;color:var(--text2);opacity:.55;z-index:200;pointer-events:none">Fictional demo · sample data</div>
+<div id="fiction-label" style="position:fixed;bottom:14px;left:14px;font-size:9px;letter-spacing:1px;color:var(--text2);opacity:.7;z-index:200;pointer-events:none">Fictional demo · sample data</div>
 
 <!-- HUMAN APPROVAL MODAL -->
 <div id="approval-overlay">
@@ -747,7 +748,7 @@ function applyLang(lang){
   }
   // Update active toggle button
   const en=document.getElementById('lang-en'),ko=document.getElementById('lang-ko');
-  if(en&&ko){en.classList.toggle('on',S.lang==='en');ko.classList.toggle('on',S.lang==='ko');}
+  if(en&&ko){en.classList.toggle('on',S.lang==='en');ko.classList.toggle('on',S.lang==='ko');en.setAttribute('aria-pressed',S.lang==='en');ko.setAttribute('aria-pressed',S.lang==='ko');}
   // Sync reviewer ON/OFF state
   const rv=document.getElementById('rv-status'),rvc=document.getElementById('rv-check');
   if(rv&&rvc){rv.textContent=rvc.checked?t('topbar.on'):t('topbar.off');}

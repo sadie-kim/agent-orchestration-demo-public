@@ -49,11 +49,40 @@ or paying for every anonymous visitor. I wanted a demo that is **safe to publish
 
 ## Roadmap
 
-- [ ] Parser unit tests + XSS-escape regression tests + CI
-- [ ] Model selector and real token streaming
-- [ ] One genuinely dynamic tool-selection step
-- [ ] `prefers-reduced-motion` + a11y pass (ARIA live, color-independent metrics)
-- [ ] Build step to develop in modules but ship a single file
+- [x] XSS-escape regression tests + CI (GitHub Actions)
+- [x] Model selector (live mode) — `gpt-4o` no longer hardcoded
+- [x] Dynamic tool-selection — the orchestrator routes per goal; scenarios declare a `path` and unused agents are skipped & dimmed
+- [x] `prefers-reduced-motion`, ARIA-live activity feed, color-independent (▲/▼) metrics, keyboard focus styles
+- [x] Bring-your-own Google bridge (connect real Docs/Gmail/Calendar — see below)
+- [ ] Real token streaming (intentionally deferred — the doc renderer parses the full response into a metrics/callout layout, so streaming would break that output)
+- [ ] Parser unit tests (the markdown→blocks parser is DOM-coupled)
+
+---
+
+## Connecting real Google (optional)
+
+By default Gmail, Docs, and Calendar are **visual simulations** — no Google account or
+setup required (ideal for a public demo or a talk). To run **real** Google actions with
+your own account, deploy the Apps Script bridge and connect it from the setup screen:
+
+1. Go to [script.google.com](https://script.google.com), create a project, and paste
+   [scripts/google-apps-script.js](scripts/google-apps-script.js) into `Code.gs`.
+2. **Deploy → New deployment → Web app** (Execute as: *you*, Who has access: *Anyone*).
+   Copy the deployment URL (ends in `/exec`).
+3. On first run, grant the OAuth consent (Gmail send, Docs, Calendar).
+4. Set **Script Properties**: `TOKEN` (a random secret), `ALLOWED_EMAIL_RECIPIENTS`
+   (comma-separated allowlist — only these addresses can be emailed), `CALENDAR_ID`,
+   `SENDER_NAME`.
+5. Open the demo, expand **"Connect your Google"** on the setup screen, and paste your
+   web-app URL + token. Set **Recipient email** to an allowlisted address.
+
+The URL + token stay in your browser (never sent to the demo's host). Actions run on
+**your** Google account, and the recipient allowlist is enforced by your script (plus a
+shared-secret token and a per-minute rate limit). With an OpenAI key + the bridge you get
+real document **and** email **and** calendar; with the bridge but no key (simulation mode)
+the document is created for real while email/calendar stay simulated. For a server-managed
+alternative, set `ENABLE_LIVE_GAS=true` + `GAS_ENDPOINT`/`GAS_TOKEN` in the server `.env`
+instead (see [server/README.md](server/README.md)).
 
 ---
 
