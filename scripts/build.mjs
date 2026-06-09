@@ -14,7 +14,10 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const tmpl = read('src/index.html');
 const css = (await esbuild.transform(read('src/styles.css'), { loader: 'css', minify: true })).code.trim();
-const js = (await esbuild.transform(read('src/app.js'), {
+// scenarios.js (data) is concatenated before app.js (logic) so COMPANY/SCENARIOS
+// are defined first — they share one classic-script scope in the output.
+const jsSource = read('src/scenarios.js') + '\n' + read('src/app.js');
+const js = (await esbuild.transform(jsSource, {
   minifyWhitespace: true, minifySyntax: false, minifyIdentifiers: false,
   charset: 'utf8', // keep Korean/UTF-8 literals as-is instead of \u-escaping
 })).code.trim();
